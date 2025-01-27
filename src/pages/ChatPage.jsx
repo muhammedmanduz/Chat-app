@@ -5,12 +5,17 @@ import {
   collection,
   onSnapshot,
   serverTimestamp,
+  query,
+  where,
+  orderBy,
 } from "firebase/firestore";
 import Message from "../components/Message";
+import EmojiPicker from "emoji-picker-react";
 
 const ChatPage = ({ room, setRoom }) => {
   const [text, setText] = useState("");
   const [messages, setMessages] = useState([]);
+  const [isOpen, setIsOpen] = useState(false);
 
   // son mesajın referansını
   const lastMsg = useRef();
@@ -23,10 +28,10 @@ const ChatPage = ({ room, setRoom }) => {
     if (text.trim() === "") return;
 
     //mesaja documentini kaydedileceği kolleksiyonun  referansını al
-    const messageCollection = collection(db, "messages");
+    const messagesCol = collection(db, "messages");
 
     //referansı alınan kolleksiyona document'i ekle
-    await addDoc(messageCollection, {
+    await addDoc(messagesCol, {
       text,
       room,
       author: {
@@ -36,25 +41,51 @@ const ChatPage = ({ room, setRoom }) => {
       },
       createdAt: serverTimestamp(),
     });
+
+    //emoji picker'ı kapat
+    setIsOpen(false);
+
     //formu temizle
     setText("");
   };
 
-  //mevcut oadada gönderilen mesajları anlık olarak al
+  // mevcut odada gönderilen mesajları anlık olarak al
   useEffect(() => {
-    //1) abone oluncak kolleksiyonun referansını al
-    const messagesCol = collection(db, "message");
+    // 1) abone olunucak kolleksiyonun referansını al
+    const messagesCol = collection(db, "messages");
 
-    //kolleksiyondaki verileri al
+    // 2) sorgu ayarlını yap (filtreleme ve sıralama)
+    const q = query(
+      messagesCol,
+      where("room", "==", room),
+      orderBy("createdAt", "asc")
+    );
+
     // 3) onSnapshot: anlık olarak kolleksiyondaki değişimleri izler.Kolleksiyon her değiştiğinde callback fn tetikler ve bu fn parametre olarak kolleksiyondaki veriyi alır.
-    onSnapshot(messagesCol, (data) => {
+    const unsub = onSnapshot(q, (data) => {
+      // mesajların geçici olarak tutulduğu dizi
+      let temp = [];
+
+      // data(): dökümanın içerisindeki veriye erişmemizi sağlar
       data.docs.forEach((doc) => {
         temp.push(doc.data());
-
-        // mesajları state aktar
       });
+
+      // mesajları state'e aktar
+      setMessages(temp);
     });
+
+    // 4) kullanıcı sayfadan ayrılınca aboneliği durdur
+    return () => {
+      unsub();
+    };
   }, []);
+
+  // her yeni mesaj eklendiğine:
+  useEffect(() => {
+    // ekrana son mesaj gelene kadar kaydır
+    lastMsg.current.scrollIntoView();
+  }, [messages]);
 
   return (
     <div className="chat-page">
@@ -85,6 +116,19 @@ const ChatPage = ({ room, setRoom }) => {
           placeholder="mesajınızı yazınız"
           type="text"
         />
+
+        <div>
+          <EmojiPicker
+            onEmojiClick={(e) => setText(text + e.emoji)}
+            open={isOpen}
+            skinTonePickerLocation="PREVIEW"
+          />
+
+          <button onClick={() => setIsOpen(!isOpen)} type="button">
+            😉
+          </button>
+        </div>
+
         <button type="submit">Gönder</button>
       </form>
     </div>

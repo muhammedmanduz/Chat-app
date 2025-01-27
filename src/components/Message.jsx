@@ -10,15 +10,16 @@ const Message = ({ data }) => {
   }
 
   // eğer farklı bir  kullanıcı attıysa: sol
-  return;
-  <div className="msg-other">
-    <div>
-      <img src={data.author.photo} alt="profile" />
-      <span>{data.author.name}</span>
-    </div>
+  return (
+    <div className="msg-other">
+      <div>
+        <img src={data.author.photo} alt="profile" />
+        <span>{data.author.name}</span>
+      </div>
 
-    <p className="msg-text">{data.text}</p>
-  </div>;
+      <p className="msg-text">{data.text}</p>
+    </div>
+  );
 };
 
 export default Message;
